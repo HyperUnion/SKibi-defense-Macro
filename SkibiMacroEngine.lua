@@ -2770,27 +2770,29 @@ end
 -- RAYFIELD UI LOADER
 ----------------------------------------------------------------
 local function loadRayfield()
-    local url = "https://sirius.menu/rayfield"
+    local urls = {
+        "https://sirius.menu/rayfield",
+        "https://raw.githubusercontent.com/UI-Libraries/Rayfield/refs/heads/main/source.lua",
+    }
 
-    local okHttp, source = pcall(function()
-        return game:HttpGet(url)
-    end)
-
-    if not okHttp then
-        error("SkibiMacroEngine: Rayfield HttpGet failed: " .. tostring(source))
+    local source
+    for _, url in ipairs(urls) do
+        local ok, result = pcall(function() return game:HttpGet(url) end)
+        if ok and type(result) == "string" and #result > 100 then
+            source = result
+            break
+        end
     end
 
-    if type(source) ~= "string" or #source < 100 then
-        error("SkibiMacroEngine: Invalid Rayfield source")
+    if not source then
+        error("SkibiMacroEngine: Rayfield unavailable (all URLs failed)")
     end
 
     local okLoad, rayfield = pcall(function()
         local fn = loadstring(source)
-
         if type(fn) ~= "function" then
             error("loadstring did not return a function")
         end
-
         return fn()
     end)
 
@@ -2806,7 +2808,16 @@ local function loadRayfield()
     return rayfield
 end
 
-local Rayfield = loadRayfield()
+local ok, Rayfield = pcall(loadRayfield)
+if not ok then
+    -- Dùng stub tránh crash toàn bộ script
+    warn("[SkibiMacroEngine] Rayfield load failed: " .. tostring(Rayfield))
+    Rayfield = setmetatable({}, {
+        __index = function(_, key)
+            return function() end  -- mọi method call đều no-op
+        end
+    })
+end
 
 _G.__SkibiMacroNotify = function(title, content, duration)
     pcall(function()
