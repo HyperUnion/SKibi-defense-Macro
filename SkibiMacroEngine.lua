@@ -2227,22 +2227,22 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
             end
         end)
 
-    elseif input.KeyCode == Enum.KeyCode.Q
+    elseif input.KeyCode == Enum.KeyCode.Q then
         task.delay(0.15, function()
             recordRawRemoteIfNeeded("Target Mode")
         end)
 
-    elseif input.KeyCode == Enum.KeyCode.R
+    elseif input.KeyCode == Enum.KeyCode.R then
         task.delay(0.15, function()
             recordRawRemoteIfNeeded("Rotate")
         end)
 
-    elseif input.KeyCode == Enum.KeyCode.X
+    elseif input.KeyCode == Enum.KeyCode.X then
         task.delay(0.15, function()
             recordRawRemoteIfNeeded("Sell")
         end)
 
-    elseif input.KeyCode == Enum.KeyCode.Z
+    elseif input.KeyCode == Enum.KeyCode.Z then
         task.delay(0.15, function()
             recordRawRemoteIfNeeded("Pause / Unpause")
         end)
@@ -2770,14 +2770,16 @@ end
 -- RAYFIELD UI LOADER
 ----------------------------------------------------------------
 local function loadRayfield()
-    local urls = {
+    local RAYFIELD_URLS = {
         "https://sirius.menu/rayfield",
         "https://raw.githubusercontent.com/UI-Libraries/Rayfield/refs/heads/main/source.lua",
     }
 
     local source
-    for _, url in ipairs(urls) do
-        local ok, result = pcall(function() return game:HttpGet(url) end)
+    for _, url in ipairs(RAYFIELD_URLS) do
+        local ok, result = pcall(function()
+            return game:HttpGet(url)
+        end)
         if ok and type(result) == "string" and #result > 100 then
             source = result
             break
@@ -2785,7 +2787,7 @@ local function loadRayfield()
     end
 
     if not source then
-        error("SkibiMacroEngine: Rayfield unavailable (all URLs failed)")
+        return nil, "Rayfield: all URLs failed or returned invalid content"
     end
 
     local okLoad, rayfield = pcall(function()
@@ -2797,26 +2799,42 @@ local function loadRayfield()
     end)
 
     if not okLoad then
-        error("SkibiMacroEngine: Rayfield failed to initialize: " .. tostring(rayfield))
+        return nil, "Rayfield: loadstring/init failed: " .. tostring(rayfield)
     end
 
     if type(rayfield) ~= "table" then
-        error("SkibiMacroEngine: Rayfield returned " .. typeof(rayfield))
+        return nil, "Rayfield: returned " .. typeof(rayfield)
     end
 
     Caps.Rayfield = true
     return rayfield
 end
 
-local ok, Rayfield = pcall(loadRayfield)
-if not ok then
-    -- Dùng stub tránh crash toàn bộ script
-    warn("[SkibiMacroEngine] Rayfield load failed: " .. tostring(Rayfield))
-    Rayfield = setmetatable({}, {
-        __index = function(_, key)
-            return function() end  -- mọi method call đều no-op
-        end
-    })
+-- Stub used when Rayfield fails to load — all method calls become no-ops
+-- so the rest of the script (macro logic, loops) still runs normally.
+local function makeRayfieldStub()
+    local stub = {}
+    local mt = {
+        __index = function(_, _)
+            return function(...)
+                return setmetatable({}, {
+                    __index = function(_, _)
+                        return function() return setmetatable({}, {__index = function(_, _) return function() end end}) end
+                    end
+                })
+            end
+        end,
+    }
+    return setmetatable(stub, mt)
+end
+
+local rayfieldResult, rayfieldErr = loadRayfield()
+local Rayfield
+if rayfieldResult then
+    Rayfield = rayfieldResult
+else
+    warn("[SkibiMacroEngine] " .. tostring(rayfieldErr) .. " — UI disabled, macro engine still active.")
+    Rayfield = makeRayfieldStub()
 end
 
 _G.__SkibiMacroNotify = function(title, content, duration)
