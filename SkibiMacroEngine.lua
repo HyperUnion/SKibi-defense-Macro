@@ -2747,7 +2747,7 @@ end)
 ----------------------------------------------------------------
 -- STARTUP BEHAVIOR
 ----------------------------------------------------------------
-local function -- Recovery is intentionally not auto-triggered on script load. PLAY invokes it when needed.
+local function startupRecovery()
     if not Settings.RecoveryEnabled then return end
     if not State.Macro or #State.Macro.events == 0 then return end
 
