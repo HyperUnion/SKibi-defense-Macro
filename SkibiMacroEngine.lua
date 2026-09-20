@@ -2771,30 +2771,49 @@ end
 ----------------------------------------------------------------
 local function loadRayfield()
     local urls = {
-        -- First try the user's chosen collection.
         "https://raw.githubusercontent.com/ro0ti/Roblox-Scripting-UI/main/Rayfield%20Lib/source.lua",
         "https://raw.githubusercontent.com/ro0ti/Roblox-Scripting-UI/main/Rayfield%20Lib/main.lua",
-
-        -- Fallback to the official Rayfield source if the collection's
-        -- file name changes.
         "https://sirius.menu/rayfield",
     }
 
-    local lastError = nil
-    for _, url in ipairs(urls) do
-        local ok, result = pcall(function()
-            return loadstring(game:HttpGet(url))()
-        end)
-
-        if ok and result then
-            Caps.Rayfield = true
-            return result
-        end
-
-        lastError = result
+    if type(loadstring) ~= "function" then
+        error("SkibiMacroEngine: loadstring() is unavailable in this executor")
     end
 
-    error("Could not load Rayfield: " .. tostring(lastError))
+    if type(game.HttpGet) ~= "function" then
+        error("SkibiMacroEngine: game:HttpGet() is unavailable")
+    end
+
+    for _, url in ipairs(urls) do
+        local okHttp, source = pcall(function()
+            return game:HttpGet(url)
+        end)
+
+        if not okHttp then
+            warn("[SkibiMacro] HttpGet failed: " .. tostring(source))
+        elseif type(source) ~= "string" or #source < 100 then
+            warn("[SkibiMacro] Invalid Rayfield source: " .. url)
+        else
+            local okCompile, chunk = pcall(loadstring, source)
+
+            if not okCompile then
+                warn("[SkibiMacro] Compile failed: " .. tostring(chunk))
+            elseif type(chunk) ~= "function" then
+                warn("[SkibiMacro] loadstring returned: " .. typeof(chunk))
+            else
+                local okRun, result = pcall(chunk)
+
+                if okRun and type(result) == "table" then
+                    Caps.Rayfield = true
+                    return result
+                end
+
+                warn("[SkibiMacro] Rayfield execution failed: " .. tostring(result))
+            end
+        end
+    end
+
+    error("SkibiMacroEngine: Could not load a compatible Rayfield library")
 end
 
 local Rayfield = loadRayfield()
