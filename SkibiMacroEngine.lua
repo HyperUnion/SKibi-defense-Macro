@@ -1,4 +1,3 @@
-# SKibi-defense-Macro
 --[[
     SKIBI DEFENSE MACRO ENGINE
     Single-file Roblox executor script
